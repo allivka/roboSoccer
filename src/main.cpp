@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 
 #define LE 5
@@ -48,9 +49,9 @@ public:
 
 RobotSpeeds countSpeeds(int alpha, int speed, int w) {
     return RobotSpeeds(
-        speed * sin(-60 - alpha) + w,
-        speed * sin(60 - alpha) + w,
-        speed * sin(180 - alpha) + w
+        speed * sin((60 - alpha) / 180.0 * 3.14) + w,
+        speed * sin((-60 - alpha) / 180.0 * 3.14) + w,
+        speed * sin((180 - alpha) / 180.0 * 3.14) + w
     );
 }
 
@@ -92,5 +93,7 @@ void setup() {
 }
 
 void loop() {
-    
+    // robot.L.run(15);
+    // robot.R.run(-15);
+    // robot.B.run(15);
 }
