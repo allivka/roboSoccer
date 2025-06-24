@@ -10,6 +10,10 @@
 #define BE 6
 #define BM 7
 
+#define BSDK 0.73
+
+#define ON_PIN 0
+
 class Motor {
 public:
     int speedPin;
@@ -48,10 +52,11 @@ public:
 };
 
 RobotSpeeds countSpeeds(int alpha, int speed, int w) {
+    speed = -speed;
     return RobotSpeeds(
-        speed * sin((60 - alpha) / 180.0 * 3.14) + w,
-        speed * sin((-60 - alpha) / 180.0 * 3.14) + w,
-        speed * sin((180 - alpha) / 180.0 * 3.14) + w
+        (speed * sin((-60 - alpha) / 180.0 * 3.14) + w),
+        -(speed * sin((60 - alpha) / 180.0 * 3.14) + w),
+        (speed * sin((180 - alpha) / 180.0 * 3.14) + w) * BSDK
     );
 }
 
@@ -88,12 +93,19 @@ Robot robot(
     Motor(BE, BM)
 );
 
+void switchFalling() {
+    robot.stop();
+    while(!digitalRead(ON_PIN)) delay(1);
+}
+
 void setup() {
+    pinMode(ON_PIN, INPUT);
+    attachInterrupt(INT2, switchFalling, FALLING);
+    while(!digitalRead(ON_PIN)) delay(1);
     
 }
 
 void loop() {
-    // robot.L.run(15);
-    // robot.R.run(-15);
-    // robot.B.run(15);
+    
+    robot.run(countSpeeds(0, 0, 50));
 }
