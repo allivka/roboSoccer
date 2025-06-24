@@ -39,108 +39,11 @@ void DMPDataReady() {
 
 #define ON_PIN 0
 
-class Motor {
-public:
-    int speedPin;
-    int dirPin;
-    
-    Motor() = default;
-    
-    Motor(int p_speedPin, int p_dirPin) : speedPin(p_speedPin), dirPin(p_dirPin) {}
-    
-    void initPins() {
-        pinMode(speedPin, OUTPUT);
-        pinMode(dirPin, OUTPUT);
-    }
-    
-    void run(int speed) {
-        
-        if(speed >= 0) {
-            digitalWrite(dirPin, 0);
-            speed = -speed;
-        } else {
-            digitalWrite(dirPin, 1);
-        }
-        
-        speed %= 101;
-                
-        analogWrite(speedPin, abs(speed * 2.55));
-    }
-};
-
-class RobotSpeeds {
-public:
-    int L = 0;
-    int R = 0;
-    int B = 0;
-    RobotSpeeds(int l, int r, int b) : L(l), R(r), B(b) {}
-};
-
-RobotSpeeds countSpeeds(int alpha, int speed, int w) {
-    speed = -speed;
-    return RobotSpeeds(
-        (speed * sin((-60 - alpha) / 180.0 * 3.14) + w),
-        -(speed * sin((60 - alpha) / 180.0 * 3.14) + w),
-        (speed * sin((180 - alpha) / 180.0 * 3.14) + w) * BSDK
-    );
-}
-
-class Robot {
-public:
-    Motor L;
-    Motor R;
-    Motor B;
-    
-    Robot() = default;
-    
-    Robot(const Motor& l, const Motor& r, const Motor& b) : L(l), R(r), B(b)  {
-        L.initPins();
-        R.initPins();
-        B.initPins();
-    }
-    
-    void run(const RobotSpeeds& speeds) {
-        L.run(speeds.L);
-        R.run(speeds.R);
-        B.run(speeds.B);
-    }
-    
-    void stop() {
-        L.run(0);
-        R.run(0);
-        B.run(0);
-    }
-};
-
-Robot robot(
-    Motor(LE, LM),
-    Motor(RE, RM),
-    Motor(BE, BM)
-);
-
-void switchFalling() {
-    robot.stop();
-    while(!digitalRead(ON_PIN)) delay(1);
-}
+void switchFalling();
 
 void initMPU() {
-    
-}
-
-void setup() {
-    pinMode(ON_PIN, INPUT);
-    
-    Wire.begin();
-    Wire.setClock(400000);
-    
-    Serial.begin(115200);
-    while (!Serial);
-    
-    Serial.println(F("Initializing I2C devices..."));
-    
     mpu.initialize();
-    pinMode(INTERRUPT_PIN, INPUT);
-
+    
     Serial.println(F("Testing MPU6050 connection..."));
     if(mpu.testConnection() == false){
         Serial.println("MPU6050 connection failed");
@@ -149,8 +52,6 @@ void setup() {
     else {
         Serial.println("MPU6050 connection successful");
     }
-    
-    while(!digitalRead(ON_PIN)) delay(1);
     
     Serial.println(F("Initializing DMP..."));
     devStatus = mpu.dmpInitialize();
@@ -185,11 +86,25 @@ void setup() {
         Serial.print(devStatus);
         Serial.println(F(")"));
     }
+}
+
+void setup() {
+    pinMode(ON_PIN, INPUT);
     
-    while(digitalRead(ON_PIN)) delay(1);
+    Wire.begin();
+    Wire.setClock(400000);
+    
+    Serial.begin(115200);
+    while (!Serial);
+    
+    Serial.println(F("Initializing I2C devices..."));
+    
+    pinMode(INTERRUPT_PIN, INPUT);
+    
     while(!digitalRead(ON_PIN)) delay(1);
-    
-    attachInterrupt(INT2, switchFalling, FALLING);
+    initMPU();
+    while(digitalRead(ON_PIN)) delay(1);
+    // attachInterrupt(INT2, switchFalling, FALLING);
     
 }
 
@@ -201,14 +116,120 @@ void updateYaw() {
         mpu.dmpGetGravity(&gravity, &q);
         mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
         yaw = ypr[0] * 180 / M_PI;
-        Serial.print("yaw\t");
-        Serial.println(yaw);
+
     }
+}
+
+class Motor {
+public:
+    int speedPin;
+    int dirPin;
+    
+    Motor() = default;
+    
+    Motor(int p_speedPin, int p_dirPin) : speedPin(p_speedPin), dirPin(p_dirPin) {}
+    
+    void initPins() {
+        pinMode(speedPin, OUTPUT);
+        pinMode(dirPin, OUTPUT);
+    }
+    
+    void run(int speed) {
+        
+        if(speed < -255) speed = -255;
+        if(speed > 255) speed = 255;
+        
+        if(speed >= 0) {
+            digitalWrite(dirPin, 0);
+            speed = -speed;
+        } else {
+            digitalWrite(dirPin, 1);
+        }
+        
+        analogWrite(speedPin, abs(speed * 2.55));
+    }
+};
+
+class RobotSpeeds {
+public:
+    int L = 0;
+    int R = 0;
+    int B = 0;
+    RobotSpeeds(int l, int r, int b) : L(l), R(r), B(b) {}
+};
+
+RobotSpeeds countSpeeds(int alpha, int speed, int w) {
+    speed = -speed;
+    
+    return RobotSpeeds(
+        (speed * sin((-60 - alpha) / 180.0 * 3.14) + w),
+        -(speed * sin((60 - alpha) / 180.0 * 3.14) + w),
+        (speed * sin((180 - alpha) / 180.0 * 3.14) + w) * BSDK
+    );
+}
+
+class Robot {
+public:
+    Motor L;
+    Motor R;
+    Motor B;
+    
+    int head = 0;
+    
+    Robot() = default;
+    
+    Robot(const Motor& l, const Motor& r, const Motor& b) : L(l), R(r), B(b)  {
+        L.initPins();
+        R.initPins();
+        B.initPins();
+    }
+    
+    void run(const RobotSpeeds& speeds) {
+        L.run(speeds.L);
+        R.run(speeds.R);
+        B.run(speeds.B);
+    }
+    
+    void stop() {
+        L.run(0);
+        R.run(0);
+        B.run(0);
+    }
+    
+};
+
+Robot robot(
+    Motor(LE, LM),
+    Motor(RE, RM),
+    Motor(BE, BM)
+);
+
+// void switchFalling() {
+//     robot.head = yaw;
+//     robot.stop();
+//     while(!digitalRead(ON_PIN)) delay(1);
+// }
+
+void printLogs() {
+    Serial.print("yaw\t");
+    Serial.println(yaw);
 }
 
 void loop() {
     if(!DMPReady) return;
     
     updateYaw();
-    robot.run(countSpeeds(0, 0, 50));
+    
+    if(!digitalRead(ON_PIN)) {
+        robot.head = yaw;
+        robot.stop();
+    } else {
+    
+        float err = robot.head - yaw;
+        float u = err * 1;
+        
+        robot.run(countSpeeds(0, 0, u));
+    }
+    
+    printLogs();
 }
