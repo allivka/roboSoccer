@@ -226,6 +226,8 @@ void loop() {
     } else {
     
         float err = robot.head - yaw;
+        if(err < -180.0) err += 360.0;
+        if(err > 180.0) err += -360.0;
         float u = err * 1;
         
         robot.run(countSpeeds(0, 0, u));
