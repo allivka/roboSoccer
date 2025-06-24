@@ -9,7 +9,6 @@
 
 // InfraredResult IRData = IRSeeker.ReadAC(); example of IrSeeker usage
 
-
 MPU6050 mpu;
 
 #define PRK 1.0
@@ -43,7 +42,7 @@ void DMPDataReady() {
 #define BE 6
 #define BM 7
 
-#define BSDK 1.0
+#define BSDK 0.73
 
 #define ON_PIN 0
 
@@ -96,26 +95,6 @@ void initMPU() {
         Serial.print(devStatus);
         Serial.println(F(")"));
     }
-    
-}
-
-void setup() {
-    pinMode(ON_PIN, INPUT);
-    pinMode(LED_BUILTIN, OUTPUT);
-    
-    Wire.begin();
-    Wire.setClock(400000);
-    
-    Serial.begin(115200);
-    
-    Serial.println(F("Initializing I2C devices..."));
-    
-    pinMode(INTERRUPT_PIN, INPUT);
-    
-    while(!digitalRead(ON_PIN)) delay(1);
-    initMPU();
-    while(digitalRead(ON_PIN)) delay(1);
-    // attachInterrupt(INT2, switchFalling, FALLING);
     
 }
 
@@ -244,12 +223,62 @@ void printLogs() {
     Serial.println(yaw);
 }
 
+void setup() {
+    pinMode(ON_PIN, INPUT);
+    pinMode(LED_BUILTIN, OUTPUT);
+    
+    Wire.begin();
+    Wire.setClock(400000);
+    
+    Serial.begin(115200);
+    
+    Serial.println(F("Initializing I2C devices..."));
+    
+    pinMode(INTERRUPT_PIN, INPUT);
+    
+    while(!digitalRead(ON_PIN)) delay(1);
+    initMPU();
+    while(digitalRead(ON_PIN)) delay(1);
+    attachInterrupt(INT2, switchFalling, FALLING);
+    
+}
+
+
 void loop() {
     if(!DMPReady) return;
     
     updateYaw();
-    
     robot.runBalance(0, 50);
     
+    // int lastTime = millis();
+    
+    // while(millis() - lastTime <= 1000) {
+        
+    //     updateYaw();
+    //     robot.runBalance(0, 50);
+    // }
+    
+    // lastTime = millis();
+    // while(millis() - lastTime <= 1000) {
+        
+    //     updateYaw();
+    //     robot.runBalance(90, 50);
+    // }
+    
+    // lastTime = millis();
+    // while(millis() - lastTime <= 1000) {
+        
+    //     updateYaw();
+    //     robot.runBalance(180, 50);
+    // }
+    
+    // lastTime = millis();
+    // while(millis() - lastTime <= 1000) {
+        
+    //     updateYaw();
+    //     robot.runBalance(-90, 50);
+    // }
+    
     printLogs();
+    
 }
