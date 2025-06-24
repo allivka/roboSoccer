@@ -5,6 +5,11 @@
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 
+#include "HTInfraredSeeker.h"
+
+// InfraredResult IRData = IRSeeker.ReadAC(); example of IrSeeker usage
+
+
 MPU6050 mpu;
 
 #define PRK 1.0
@@ -182,6 +187,8 @@ public:
     
     int head = 0;
     
+    InfraredSeeker IRSeeker;
+    
     Robot() = default;
     
     Robot(const Motor& l, const Motor& r, const Motor& b) : L(l), R(r), B(b)  {
@@ -242,13 +249,7 @@ void loop() {
     
     updateYaw();
     
-    if(!digitalRead(ON_PIN)) {
-        robot.head = yaw;
-        robot.stop();
-    } else {
-    
-        robot.runBalance(0, 50);
-    }
+    robot.runBalance(0, 50);
     
     printLogs();
 }
