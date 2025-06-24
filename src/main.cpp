@@ -7,6 +7,9 @@
 
 MPU6050 mpu;
 
+#define PRK 1.0
+#define DRK 3.8
+
 int const INTERRUPT_PIN = 2;
 
 bool DMPReady = false;
@@ -35,7 +38,7 @@ void DMPDataReady() {
 #define BE 6
 #define BM 7
 
-#define BSDK 0.73
+#define BSDK 1.0
 
 #define ON_PIN 0
 
@@ -79,6 +82,8 @@ void initMPU() {
 
         Serial.println(F("DMP ready! Waiting for first interrupt..."));
         DMPReady = true;
+        digitalWrite(LED_BUILTIN, 1);
+        
         packetSize = mpu.dmpGetFIFOPacketSize();
     } 
     else {
@@ -86,16 +91,17 @@ void initMPU() {
         Serial.print(devStatus);
         Serial.println(F(")"));
     }
+    
 }
 
 void setup() {
     pinMode(ON_PIN, INPUT);
+    pinMode(LED_BUILTIN, OUTPUT);
     
     Wire.begin();
     Wire.setClock(400000);
     
     Serial.begin(115200);
-    while (!Serial);
     
     Serial.println(F("Initializing I2C devices..."));
     
@@ -196,6 +202,20 @@ public:
         B.run(0);
     }
     
+    void runBalance(int absDirection, int speed) {
+        static float errold = 0;
+        float err = head - yaw;
+        
+        if(err < -180.0) err += 360.0;
+        if(err > 180.0) err += -360.0;
+        
+        float u = err * PRK + (err - errold) * DRK;
+        errold = err;
+        u /= 1.8;
+        
+        this->run(countSpeeds(absDirection, speed, u));
+    }
+    
 };
 
 Robot robot(
@@ -204,11 +224,13 @@ Robot robot(
     Motor(BE, BM)
 );
 
-// void switchFalling() {
-//     robot.head = yaw;
-//     robot.stop();
-//     while(!digitalRead(ON_PIN)) delay(1);
-// }
+void switchFalling() {
+    robot.stop();
+    while(!digitalRead(ON_PIN)) {
+        robot.head = yaw;
+        delay(1);
+    }
+}
 
 void printLogs() {
     Serial.print("yaw\t");
@@ -225,12 +247,7 @@ void loop() {
         robot.stop();
     } else {
     
-        float err = robot.head - yaw;
-        if(err < -180.0) err += 360.0;
-        if(err > 180.0) err += -360.0;
-        float u = err * 1;
-        
-        robot.run(countSpeeds(0, 0, u));
+        robot.runBalance(0, 50);
     }
     
     printLogs();
