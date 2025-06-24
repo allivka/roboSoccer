@@ -1,5 +1,30 @@
 
 #include <Arduino.h>
+#include <Wire.h>
+
+#include "I2Cdev.h"
+#include "MPU6050_6Axis_MotionApps20.h"
+
+MPU6050 mpu;
+
+int const INTERRUPT_PIN = 2;
+
+bool DMPReady = false;
+uint8_t MPUIntStatus;
+uint8_t devStatus;
+uint16_t packetSize;
+uint8_t FIFOBuffer[64];
+
+Quaternion q;
+VectorFloat gravity;
+float ypr[3];
+
+uint8_t teapotPacket[14] = { '$', 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x00, '\r', '\n' };
+
+volatile bool MPUInterrupt = false;
+void DMPDataReady() {
+  MPUInterrupt = true;
+}
 
 #define LE 5
 #define LM 4
@@ -98,14 +123,92 @@ void switchFalling() {
     while(!digitalRead(ON_PIN)) delay(1);
 }
 
-void setup() {
-    pinMode(ON_PIN, INPUT);
-    attachInterrupt(INT2, switchFalling, FALLING);
-    while(!digitalRead(ON_PIN)) delay(1);
+void initMPU() {
     
 }
 
-void loop() {
+void setup() {
+    pinMode(ON_PIN, INPUT);
     
+    Wire.begin();
+    Wire.setClock(400000);
+    
+    Serial.begin(115200);
+    while (!Serial);
+    
+    Serial.println(F("Initializing I2C devices..."));
+    
+    mpu.initialize();
+    pinMode(INTERRUPT_PIN, INPUT);
+
+    Serial.println(F("Testing MPU6050 connection..."));
+    if(mpu.testConnection() == false){
+        Serial.println("MPU6050 connection failed");
+        while(true);
+    }
+    else {
+        Serial.println("MPU6050 connection successful");
+    }
+    
+    while(!digitalRead(ON_PIN)) delay(1);
+    
+    Serial.println(F("Initializing DMP..."));
+    devStatus = mpu.dmpInitialize();
+
+    mpu.setXGyroOffset(0);
+    mpu.setYGyroOffset(0);
+    mpu.setZGyroOffset(0);
+    mpu.setXAccelOffset(0);
+    mpu.setYAccelOffset(0);
+    mpu.setZAccelOffset(0);
+
+    if (devStatus == 0) {
+        mpu.CalibrateAccel(6);
+        mpu.CalibrateGyro(6);
+        Serial.println("These are the Active offsets: ");
+        mpu.PrintActiveOffsets();
+        Serial.println(F("Enabling DMP..."));
+        mpu.setDMPEnabled(true);
+
+        Serial.print(F("Enabling interrupt detection (Arduino external interrupt "));
+        Serial.print(digitalPinToInterrupt(INTERRUPT_PIN));
+        Serial.println(F(")..."));
+        attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), DMPDataReady, RISING);
+        MPUIntStatus = mpu.getIntStatus();
+
+        Serial.println(F("DMP ready! Waiting for first interrupt..."));
+        DMPReady = true;
+        packetSize = mpu.dmpGetFIFOPacketSize();
+    } 
+    else {
+        Serial.print(F("DMP Initialization failed (code "));
+        Serial.print(devStatus);
+        Serial.println(F(")"));
+    }
+    
+    while(digitalRead(ON_PIN)) delay(1);
+    while(!digitalRead(ON_PIN)) delay(1);
+    
+    attachInterrupt(INT2, switchFalling, FALLING);
+    
+}
+
+float yaw = 0.0;
+
+void updateYaw() {
+    if (mpu.dmpGetCurrentFIFOPacket(FIFOBuffer)) {
+        mpu.dmpGetQuaternion(&q, FIFOBuffer);
+        mpu.dmpGetGravity(&gravity, &q);
+        mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+        yaw = ypr[0] * 180 / M_PI;
+        Serial.print("yaw\t");
+        Serial.println(yaw);
+    }
+}
+
+void loop() {
+    if(!DMPReady) return;
+    
+    updateYaw();
     robot.run(countSpeeds(0, 0, 50));
 }
