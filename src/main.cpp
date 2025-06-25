@@ -110,6 +110,12 @@ void updateYaw() {
     }
 }
 
+int correctRange(int angle) {
+    if(angle < -180.0) angle += 360.0;
+    if(angle > 180.0) angle += -360.0;
+    return angle;
+}
+
 class Motor {
 public:
     int speedPin;
@@ -188,9 +194,9 @@ public:
         B.run(0);
     }
     
-    void runBalance(int absDirection, int speed) {
+    void runBalance(int targetDir, int relDirection, int speed) {
         static float errold = 0;
-        float err = head - yaw;
+        float err = targetDir - yaw;
         
         if(err < -180.0) err += 360.0;
         if(err > 180.0) err += -360.0;
@@ -199,7 +205,22 @@ public:
         errold = err;
         u /= 1.8;
         
-        this->run(countSpeeds(absDirection, speed, u));
+        this->run(countSpeeds(relDirection, speed, u));
+    }
+    
+    
+    void temp(int absDir, int speed) {
+        static float errold = 0;
+        float err = absDir - yaw;
+        
+        if(err < -180.0) err += 360.0;
+        if(err > 180.0) err += -360.0; 
+        
+        float u = err * 1.5 + (err - errold) * 0.0;
+        errold = err;
+        u /= 1.8;
+        
+        this->run(countSpeeds(u, speed, 0));
     }
     
 };
@@ -248,37 +269,17 @@ void loop() {
     if(!DMPReady) return;
     
     updateYaw();
-    robot.runBalance(0, 50);
     
-    // int lastTime = millis();
+    InfraredResult result = robot.IRSeeker.ReadAC();
+    int angle = result.Direction * 30 - 150;
     
-    // while(millis() - lastTime <= 1000) {
-        
-    //     updateYaw();
-    //     robot.runBalance(0, 50);
-    // }
+    Serial.println(angle);
     
-    // lastTime = millis();
-    // while(millis() - lastTime <= 1000) {
-        
-    //     updateYaw();
-    //     robot.runBalance(90, 50);
-    // }
-    
-    // lastTime = millis();
-    // while(millis() - lastTime <= 1000) {
-        
-    //     updateYaw();
-    //     robot.runBalance(180, 50);
-    // }
-    
-    // lastTime = millis();
-    // while(millis() - lastTime <= 1000) {
-        
-    //     updateYaw();
-    //     robot.runBalance(-90, 50);
-    // }
-    
-    printLogs();
+    if(result.Direction != 0) {
+        updateYaw();
+        robot.runBalance(yaw + angle, 0, 40);
+    } else {
+        robot.run(countSpeeds(0, 0, 30));
+    }
     
 }
