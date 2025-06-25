@@ -1,6 +1,7 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include <NewPing.h>
 
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
@@ -10,6 +11,11 @@
 // InfraredResult IRData = IRSeeker.ReadAC(); example of IrSeeker usage
 
 MPU6050 mpu;
+
+#define MAX_SONAR_DIST
+
+NewPing sonarL(A0, A1, 200);
+NewPing sonarR(9, 8, 200);
 
 #define PRK 1.0
 #define DRK 3.8
@@ -258,19 +264,20 @@ public:
         // int alpha = correctRange(angle + angle * CRK * result.Strength * sign(angle));
         int alpha = correctRange(yaw + angle + (40 * sign(angle)));
         
-        Serial.print("\tangle\t");
-        Serial.print(angle);
-        Serial.print("\tstrength\t");
-        Serial.print(result.Strength);
-        Serial.print("\talpha\t");
-        Serial.println(alpha);
+        // Serial.print("\tangle\t");
+        // Serial.print(angle);
+        // Serial.print("\tstrength\t");
+        // Serial.print(result.Strength);
+        // Serial.print("\talpha\t");
+        // Serial.println(alpha);
         
-        if(result.Direction != 0) {
-            updateYaw();
-            this->runBalance(head, alpha, speed);
-        } else {
-            this->run(countSpeeds(0, speed, 0));
+        if(result.Direction == 0) {
+            this->run(countSpeeds(0, 0, 30));
+            return;
         }
+        
+        updateYaw();
+        this->runBalance(head, alpha, speed);
     }
     
 };
@@ -314,11 +321,19 @@ void setup() {
     
 }
 
+unsigned int distL = 0, distR = 0;
 
 void loop() {
     if(!DMPReady) return;
     
-    // robot.followBall();
+    distL = sonarL.ping_cm();
+    distR = sonarR.ping_cm();
+    
+    // Serial.print("\tLeft\t");
+    // Serial.print(distL);
+    // Serial.print("\tRight\t");
+    // Serial.println(distR);
+    
     robot.catchBall(40);
     
 }
