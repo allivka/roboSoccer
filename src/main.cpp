@@ -223,6 +223,22 @@ public:
         this->run(countSpeeds(u, speed, 0));
     }
     
+    void followBall() {
+        updateYaw();
+    
+        InfraredResult result = robot.IRSeeker.ReadAC();
+        int angle = result.Direction * 30 - 150;
+        
+        Serial.println(angle);
+        
+        if(result.Direction != 0) {
+            updateYaw();
+            this->runBalance(yaw + angle, 0, 40);
+        } else {
+            this->run(countSpeeds(0, 0, 30));
+        }
+    }
+    
 };
 
 Robot robot(
@@ -268,18 +284,6 @@ void setup() {
 void loop() {
     if(!DMPReady) return;
     
-    updateYaw();
-    
-    InfraredResult result = robot.IRSeeker.ReadAC();
-    int angle = result.Direction * 30 - 150;
-    
-    Serial.println(angle);
-    
-    if(result.Direction != 0) {
-        updateYaw();
-        robot.runBalance(yaw + angle, 0, 40);
-    } else {
-        robot.run(countSpeeds(0, 0, 30));
-    }
+    robot.followBall();
     
 }
