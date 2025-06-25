@@ -46,6 +46,8 @@ void DMPDataReady() {
 
 #define ON_PIN 0
 
+#define CRK 0.7
+
 void switchFalling();
 
 void initMPU() {
@@ -108,6 +110,12 @@ void updateYaw() {
         yaw = ypr[0] * 180 / M_PI;
 
     }
+}
+
+int sign(int n) {
+    if(n < 0) return -1;
+    if(n > 0) return 1;
+    return 0;
 }
 
 int correctRange(int angle) {
@@ -209,7 +217,7 @@ public:
     }
     
     
-    void temp(int absDir, int speed) {
+    void runBalanceAlter(int absDir, int speed) {
         static float errold = 0;
         float err = absDir - yaw;
         
@@ -226,16 +234,42 @@ public:
     void followBall() {
         updateYaw();
     
-        InfraredResult result = robot.IRSeeker.ReadAC();
+        InfraredResult result = IRSeeker.ReadAC();
         int angle = result.Direction * 30 - 150;
         
-        Serial.println(angle);
+        Serial.print("angle\t");
+        Serial.print(angle);
         
         if(result.Direction != 0) {
             updateYaw();
             this->runBalance(yaw + angle, 0, 40);
         } else {
             this->run(countSpeeds(0, 0, 30));
+        }
+    }
+    
+    
+    void catchBall(int speed) {
+        updateYaw();
+        
+        InfraredResult result = IRSeeker.ReadAC();
+        int angle = result.Direction * 30 - 150;
+        
+        // int alpha = correctRange(angle + angle * CRK * result.Strength * sign(angle));
+        int alpha = correctRange(yaw + angle + (40 * sign(angle)));
+        
+        Serial.print("\tangle\t");
+        Serial.print(angle);
+        Serial.print("\tstrength\t");
+        Serial.print(result.Strength);
+        Serial.print("\talpha\t");
+        Serial.println(alpha);
+        
+        if(result.Direction != 0) {
+            updateYaw();
+            this->runBalance(head, alpha, speed);
+        } else {
+            this->run(countSpeeds(0, speed, 0));
         }
     }
     
@@ -284,6 +318,7 @@ void setup() {
 void loop() {
     if(!DMPReady) return;
     
-    robot.followBall();
+    // robot.followBall();
+    robot.catchBall(40);
     
 }
