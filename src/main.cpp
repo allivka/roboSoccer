@@ -286,7 +286,7 @@ public:
             static int errold = 0;
             
             int err = (distR - distL);
-            int u = err * 0.33 + (err - errold) * 0.1;
+            int u = err * 0.33 + (err - errold) * 0.3;
             errold = err;
             this->runBalance(head, u, speed);
             return;
