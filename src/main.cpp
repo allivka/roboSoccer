@@ -281,14 +281,14 @@ public:
             return;
         }
         
-        if(angle == 0 && result.Strength >= 150) {
+        if(angle == 0 && result.Strength >= 190) {
             
             static int errold = 0;
             
             int err = (distR - distL);
             int u = err * 0.33 + (err - errold) * 0.3;
             errold = err;
-            this->runBalance(head, u, speed);
+            this->runBalance(head, alpha + u, speed);
             return;
         }
         
