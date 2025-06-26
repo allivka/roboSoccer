@@ -17,8 +17,8 @@ MPU6050 mpu;
 NewPing sonarL(A0, A1, 200);
 NewPing sonarR(9, 8, 200);
 
-#define PRK 1.0
-#define DRK 3.8
+#define PRK 0.75
+#define DRK 4.5
 
 int const INTERRUPT_PIN = 2;
 
@@ -146,8 +146,11 @@ public:
     
     void run(int speed) {
         
-        if(speed < -255) speed = -255;
-        if(speed > 255) speed = 255;
+        // if(speed < -255) speed = -255;
+        // if(speed > 255) speed = 255;
+        
+        if(speed < -100) speed = -100;
+        if(speed > 100) speed = 100;
         
         if(speed >= 0) {
             digitalWrite(dirPin, 0);
@@ -221,8 +224,7 @@ public:
         
         this->run(countSpeeds(relDirection, speed, u));
     }
-    
-    
+        
     void runBalanceAlter(int absDir, int speed) {
         static float errold = 0;
         float err = absDir - yaw;
@@ -261,8 +263,11 @@ public:
         InfraredResult result = IRSeeker.ReadAC();
         int angle = result.Direction * 30 - 150;
         
+        int distL = sonarL.ping_cm();
+        int distR = sonarR.ping_cm();
+        
         // int alpha = correctRange(angle + angle * CRK * result.Strength * sign(angle));
-        int alpha = correctRange(yaw + angle + (40 * sign(angle)));
+        int alpha = correctRange(yaw + angle + (70 * sign(angle)));
         
         // Serial.print("\tangle\t");
         // Serial.print(angle);
@@ -272,11 +277,23 @@ public:
         // Serial.println(alpha);
         
         if(result.Direction == 0) {
-            this->run(countSpeeds(0, 0, 30));
+            this->runBalance(head, 105, speed);
             return;
         }
         
-        updateYaw();
+        // if(angle == 0 && result.Strength >= 150) {
+        //     unsigned int distL = 0, distR = 0;
+            
+        //     static int errold = 0;
+            
+        
+            
+        //     int err = (distR - distL);
+        //     int u = err * 0.33 + (err - errold) * 0.5;
+        //     errold = err;
+        //     alpha += u;
+        // }
+        
         this->runBalance(head, alpha, speed);
     }
     
@@ -291,7 +308,6 @@ Robot robot(
 void switchFalling() {
     robot.stop();
     while(!digitalRead(ON_PIN)) {
-        robot.head = yaw;
         delay(1);
     }
 }
@@ -321,19 +337,15 @@ void setup() {
     
 }
 
-unsigned int distL = 0, distR = 0;
-
 void loop() {
     if(!DMPReady) return;
     
-    distL = sonarL.ping_cm();
-    distR = sonarR.ping_cm();
+    
     
     // Serial.print("\tLeft\t");
     // Serial.print(distL);
     // Serial.print("\tRight\t");
     // Serial.println(distR);
     
-    robot.catchBall(40);
-    
+    robot.catchBall(55);
 }
