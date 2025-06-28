@@ -281,12 +281,12 @@ public:
             return;
         }
         
-        if(angle == 0 && result.Strength >= 190) {
+        if(angle == 0 && result.Strength >= 215) {
             
             static int errold = 0;
             
             int err = (distR - distL);
-            int u = err * 0.33 + (err - errold) * 0.3;
+            int u = err * 0.25 + (err - errold) * 0.1;
             errold = err;
             this->runBalance(head, alpha + u, speed);
             return;
@@ -345,5 +345,5 @@ void loop() {
     // Serial.print("\tRight\t");
     // Serial.println(distR);
     
-    robot.catchBall(55);
+    robot.catchBall(70);
 }
