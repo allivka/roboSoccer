@@ -8,8 +8,6 @@
 
 #include "HTInfraredSeeker.h"
 
-// InfraredResult IRData = IRSeeker.ReadAC(); example of IrSeeker usage
-
 MPU6050 mpu;
 
 #define MAX_SONAR_DIST
@@ -32,25 +30,23 @@ Quaternion q;
 VectorFloat gravity;
 float ypr[3];
 
-uint8_t teapotPacket[14] = { '$', 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x00, '\r', '\n' };
-
 volatile bool MPUInterrupt = false;
 void DMPDataReady() {
   MPUInterrupt = true;
 }
 
-#define LE 5
-#define LM 4
+#define LE 7
+#define LM 6
 
-#define RE 10
-#define RM 11
+#define RE 8
+#define RM 9
 
-#define BE 6
-#define BM 7
+#define BE 11
+#define BM 10
 
 #define BSDK 0.73
 
-#define ON_PIN 0
+#define ON_PIN A5
 
 #define CRK 0.7
 
@@ -132,34 +128,33 @@ int correctRange(int angle) {
 
 class Motor {
 public:
-    int speedPin;
-    int dirPin;
+    int pin1;
+    int pin2;
     
-    Motor() = default;
-    
-    Motor(int p_speedPin, int p_dirPin) : speedPin(p_speedPin), dirPin(p_dirPin) {}
+    Motor(int p_pin1, int p_pin2) : pin1(p_pin1), pin2(p_pin2) {}
     
     void initPins() {
-        pinMode(speedPin, OUTPUT);
-        pinMode(dirPin, OUTPUT);
+        pinMode(pin1, OUTPUT);
+        pinMode(pin2, OUTPUT);
     }
     
     void run(int speed) {
         
-        // if(speed < -255) speed = -255;
-        // if(speed > 255) speed = 255;
-        
         if(speed < -100) speed = -100;
         if(speed > 100) speed = 100;
         
-        if(speed >= 0) {
-            digitalWrite(dirPin, 0);
-            speed = -speed;
-        } else {
-            digitalWrite(dirPin, 1);
+        
+        int speed1 = abs(speed) * (speed >= 0) * 2.55;
+        int speed2 = abs(speed) * (speed <= 0) * 2.55;
+        
+        if(speed == 0) {
+            speed1 = 255;
+            speed2 = 255;
         }
         
-        analogWrite(speedPin, abs(speed * 2.55));
+        analogWrite(pin1, speed1);
+        analogWrite(pin2, speed2);
+        
     }
 };
 
@@ -176,7 +171,7 @@ RobotSpeeds countSpeeds(int alpha, int speed, int w) {
     
     return RobotSpeeds(
         (speed * sin((-60 - alpha) / 180.0 * 3.14) + w),
-        -(speed * sin((60 - alpha) / 180.0 * 3.14) + w),
+        (speed * sin((60 - alpha) / 180.0 * 3.14) + w),
         (speed * sin((180 - alpha) / 180.0 * 3.14) + w) * BSDK
     );
 }
@@ -256,8 +251,7 @@ public:
         }
     }
     
-    
-    void catchBall(int speed) {
+    void play(int speed) {
         updateYaw();
         
         InfraredResult result = IRSeeker.ReadAC();
@@ -266,7 +260,7 @@ public:
         int distL = sonarL.ping_cm();
         int distR = sonarR.ping_cm();
         
-        // int alpha = correctRange(angle + angle * CRK * result.Strength * sign(angle));
+        // int alpha = correctRange(angle + angle * CRK * result.Strength);
         int alpha = correctRange(yaw + angle + (70 * sign(angle)));
         
         // Serial.print("\tangle\t");
@@ -324,26 +318,32 @@ void setup() {
     
     Serial.begin(115200);
     
-    Serial.println(F("Initializing I2C devices..."));
+    while(!digitalRead(ON_PIN));
+    digitalWrite(LED_BUILTIN, 1);
+    // Serial.println(F("Initializing I2C devices..."));
     
-    pinMode(INTERRUPT_PIN, INPUT);
+    // pinMode(INTERRUPT_PIN, INPUT);
     
-    while(!digitalRead(ON_PIN)) delay(1);
-    initMPU();
-    while(digitalRead(ON_PIN)) delay(1);
+    // initMPU();
+    delay(100);
+    // while(!digitalRead(ON_PIN));
     attachInterrupt(INT2, switchFalling, FALLING);
     
 }
 
 void loop() {
-    if(!DMPReady) return;
+    // if(!DMPReady) return;
     
+    robot.run(countSpeeds(0, 50, 0));
+    delay(1000);
     
+    robot.run(countSpeeds(90, 50, 0));
+    delay(1000);
     
-    // Serial.print("\tLeft\t");
-    // Serial.print(distL);
-    // Serial.print("\tRight\t");
-    // Serial.println(distR);
+    robot.run(countSpeeds(180, 50, 0));
+    delay(1000);
     
-    robot.catchBall(70);
+    robot.run(countSpeeds(-90, 50, 0));
+    delay(1000);
+    
 }
