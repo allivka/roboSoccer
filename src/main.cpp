@@ -44,8 +44,6 @@ void DMPDataReady() {
 #define BE 11
 #define BM 10
 
-#define BSDK 0.73
-
 #define ON_PIN A5
 
 #define CRK 0.7
@@ -172,7 +170,7 @@ RobotSpeeds countSpeeds(int alpha, int speed, int w) {
     return RobotSpeeds(
         (speed * sin((-60 - alpha) / 180.0 * 3.14) + w),
         (speed * sin((60 - alpha) / 180.0 * 3.14) + w),
-        (speed * sin((180 - alpha) / 180.0 * 3.14) + w) * BSDK
+        (speed * sin((180 - alpha) / 180.0 * 3.14) + w)
     );
 }
 
@@ -186,12 +184,11 @@ public:
     
     InfraredSeeker IRSeeker;
     
-    Robot() = default;
-    
     Robot(const Motor& l, const Motor& r, const Motor& b) : L(l), R(r), B(b)  {
         L.initPins();
         R.initPins();
         B.initPins();
+        // IRSeeker.Initialize();
     }
     
     void run(const RobotSpeeds& speeds) {
@@ -260,15 +257,10 @@ public:
         int distL = sonarL.ping_cm();
         int distR = sonarR.ping_cm();
         
-        // int alpha = correctRange(angle + angle * CRK * result.Strength);
-        int alpha = correctRange(yaw + angle + (70 * sign(angle)));
+        int alpha = correctRange(angle + sign(angle) * correctRange(CRK * result.Strength));
+        // int alpha = correctRange(yaw + angle + (70 * sign(angle)));
         
-        // Serial.print("\tangle\t");
-        // Serial.print(angle);
-        // Serial.print("\tstrength\t");
-        // Serial.print(result.Strength);
-        // Serial.print("\talpha\t");
-        // Serial.println(alpha);
+
         
         if(result.Direction == 0) {
             this->runBalance(head, 105, speed);
@@ -297,53 +289,55 @@ Robot robot(
     Motor(BE, BM)
 );
 
-void switchFalling() {
-    robot.stop();
-    while(!digitalRead(ON_PIN)) {
-        delay(1);
-    }
-}
-
-void printLogs() {
-    Serial.print("yaw\t");
-    Serial.println(yaw);
-}
-
 void setup() {
+    
     pinMode(ON_PIN, INPUT);
     pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(INTERRUPT_PIN, INPUT);
+    pinMode(A14, OUTPUT);
+    
+    digitalWrite(A14, 1);
+    delay(200);
     
     Wire.begin();
     Wire.setClock(400000);
     
-    Serial.begin(115200);
+    Serial.begin(9600);
     
     while(!digitalRead(ON_PIN));
+    while(digitalRead(ON_PIN));
+    
+    Serial.println(F("Initializing I2C devices..."));
+    
+    initMPU();
+    
     digitalWrite(LED_BUILTIN, 1);
-    // Serial.println(F("Initializing I2C devices..."));
     
-    // pinMode(INTERRUPT_PIN, INPUT);
-    
-    // initMPU();
-    delay(100);
-    // while(!digitalRead(ON_PIN));
-    attachInterrupt(INT2, switchFalling, FALLING);
-    
+    while(!digitalRead(ON_PIN));
+    while(digitalRead(ON_PIN));
 }
 
 void loop() {
-    // if(!DMPReady) return;
+    if(!DMPReady) return;
     
-    robot.run(countSpeeds(0, 50, 0));
-    delay(1000);
+    // robot.run(countSpeeds(0, 50, 0));
+    // delay(1000);
     
-    robot.run(countSpeeds(90, 50, 0));
-    delay(1000);
+    // robot.run(countSpeeds(90, 50, 0));
+    // delay(1000);
     
-    robot.run(countSpeeds(180, 50, 0));
-    delay(1000);
+    // robot.run(countSpeeds(180, 50, 0));
+    // delay(1000);
     
-    robot.run(countSpeeds(-90, 50, 0));
-    delay(1000);
+    // robot.run(countSpeeds(-90, 50, 0));
+    // delay(1000);
     
+    // InfraredResult result =  robot.IRSeeker.ReadAC();
+    
+    // Serial.print("\tangle\t");
+    // Serial.print(result.Direction * 30 - 150);
+    // Serial.print("\tstrength\t");
+    // Serial.println(result.Strength);
+    updateYaw();
+    Serial.println(yaw);
 }
