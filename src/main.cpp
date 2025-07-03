@@ -10,13 +10,12 @@
 
 MPU6050 mpu;
 
-#define MAX_SONAR_DIST
+#define MAX_SONAR_DIST 200
 
-NewPing sonarL(A0, A1, 200);
-NewPing sonarR(9, 8, 200);
+NewPing sonarR(19, 18, MAX_SONAR_DIST);
 
-#define PRK 0.75
-#define DRK 4.5
+#define PRK 0.7
+#define DRK 0.8
 
 int const INTERRUPT_PIN = 2;
 
@@ -46,7 +45,7 @@ void DMPDataReady() {
 
 #define ON_PIN A5
 
-#define CRK 0.7
+#define CRK 2.83
 
 void switchFalling();
 
@@ -249,17 +248,16 @@ public:
     }
     
     void play(int speed) {
+        delay(5);
         updateYaw();
         
         InfraredResult result = IRSeeker.ReadAC();
         int angle = result.Direction * 30 - 150;
         
-        int distL = sonarL.ping_cm();
         int distR = sonarR.ping_cm();
         
-        int alpha = correctRange(angle + sign(angle) * correctRange(CRK * result.Strength));
-        // int alpha = correctRange(yaw + angle + (70 * sign(angle)));
-        
+        // int alpha = correctRange(angle + sign(angle) * correctRange(CRK * result.Strength));
+        int alpha = correctRange(correctRange(yaw + angle) + (55 * sign(angle)));
 
         
         if(result.Direction == 0) {
@@ -267,14 +265,14 @@ public:
             return;
         }
         
-        if(angle == 0 && result.Strength >= 215) {
+        if(angle == 0 && result.Strength >= 170) {
             
             static int errold = 0;
             
-            int err = (distR - distL);
-            int u = err * 0.25 + (err - errold) * 0.1;
+            int err = (distR - 50);
+            int u = err * 1.0 + (err - errold) * 0.0;
             errold = err;
-            this->runBalance(head, alpha + u, speed);
+            this->runBalance(head, u, speed);
             return;
         }
         
@@ -295,7 +293,6 @@ void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(INTERRUPT_PIN, INPUT);
     pinMode(A14, OUTPUT);
-    
     digitalWrite(A14, 1);
     delay(200);
     
@@ -315,29 +312,28 @@ void setup() {
     
     while(!digitalRead(ON_PIN));
     while(digitalRead(ON_PIN));
+    
 }
 
+bool isActive = true;
+
 void loop() {
+    
+    if(digitalRead(ON_PIN)) {
+        isActive = !isActive;
+        while(digitalRead(ON_PIN));
+    }
+    
+    if(!isActive) {
+        robot.stop();
+        return;
+    }
+    
     if(!DMPReady) return;
     
-    // robot.run(countSpeeds(0, 50, 0));
-    // delay(1000);
+    robot.play(50);
     
-    // robot.run(countSpeeds(90, 50, 0));
-    // delay(1000);
-    
-    // robot.run(countSpeeds(180, 50, 0));
-    // delay(1000);
-    
-    // robot.run(countSpeeds(-90, 50, 0));
-    // delay(1000);
-    
-    // InfraredResult result =  robot.IRSeeker.ReadAC();
-    
-    // Serial.print("\tangle\t");
-    // Serial.print(result.Direction * 30 - 150);
-    // Serial.print("\tstrength\t");
-    // Serial.println(result.Strength);
-    updateYaw();
-    Serial.println(yaw);
+    Serial.println(sonarR.ping_cm());
+    delay(5);
+    // Serial.println(robot.IRSeeker.ReadAC().Strength);
 }
