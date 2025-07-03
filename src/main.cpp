@@ -12,7 +12,7 @@ MPU6050 mpu;
 
 #define MAX_SONAR_DIST 200
 
-NewPing sonarR(19, 18, MAX_SONAR_DIST);
+// NewPing sonarR(19, 18, MAX_SONAR_DIST);
 
 #define PRK 0.7
 #define DRK 0.8
@@ -248,13 +248,12 @@ public:
     }
     
     void play(int speed) {
-        delay(5);
         updateYaw();
         
         InfraredResult result = IRSeeker.ReadAC();
         int angle = result.Direction * 30 - 150;
         
-        int distR = sonarR.ping_cm();
+        // int distR = sonarR.ping_cm();
         
         // int alpha = correctRange(angle + sign(angle) * correctRange(CRK * result.Strength));
         int alpha = correctRange(correctRange(yaw + angle) + (55 * sign(angle)));
@@ -265,16 +264,16 @@ public:
             return;
         }
         
-        if(angle == 0 && result.Strength >= 170) {
+        // if(angle == 0 && result.Strength >= 170) {
             
-            static int errold = 0;
+        //     static int errold = 0;
             
-            int err = (distR - 50);
-            int u = err * 1.0 + (err - errold) * 0.0;
-            errold = err;
-            this->runBalance(head, u, speed);
-            return;
-        }
+        //     int err = (distR - 50);
+        //     int u = err * 1.0 + (err - errold) * 0.5;
+        //     errold = err;
+        //     this->runBalance(head, u, speed);
+        //     return;
+        // }
         
         this->runBalance(head, alpha, speed);
     }
@@ -332,8 +331,8 @@ void loop() {
     if(!DMPReady) return;
     
     robot.play(50);
+    Serial.println(yaw);
+    // Serial.println(sonarR.ping_cm());
+    // delay(5);
     
-    Serial.println(sonarR.ping_cm());
-    delay(5);
-    // Serial.println(robot.IRSeeker.ReadAC().Strength);
 }
